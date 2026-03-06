@@ -1,107 +1,111 @@
 --  запрос, который считает общее количество покупателей из таблицы customers. Назовите колонку customers_count
-select count (distinct customer_id ) as customers_count 
-from customers c 
+SELECT count(DISTINCT customer_id) AS customers_count
+FROM customers
 -- 5 ШАГ И ТРИ ОТЧЕТА--
 /*Первый отчет о десятке лучших продавцов. 
  * Таблица состоит из трех колонок - данных о продавце, 
  * суммарной выручке с проданных товаров и количестве проведенных сделок, и отсортирована по убыванию выручки
  */
-select
-	CONCAT(e.first_name , ' ', e.last_name) as seller,
-	count(s.sales_id ) as operations,
-	FLOOR(SUM(s.quantity *p.price )) as income
-from sales s
-left join products p on s.product_id = p.product_id 
-left join employees e on s.sales_person_id = e.employee_id 
-group by seller 
-order by income desc
-LIMIT 10
+-- в consts определяем переменную top - нужно 10 лучших
+WITH consts AS (SELECT 10 AS top)
+
+SELECT
+    CONCAT(e.first_name, ' ', e.last_name) AS seller,
+    COUNT(s.sales_id) AS operations,
+    FLOOR(SUM(s.quantity * p.price)) AS income
+FROM sales AS s
+LEFT JOIN products AS p ON s.product_id = p.product_id
+LEFT JOIN employees AS e ON s.sales_person_id = e.employee_id
+GROUP BY seller
+ORDER BY income DESC
+LIMIT (SELECT top FROM consts)
 
 /*Второй отчет  о продавцах, чья средняя выручка за сделку меньше средней выручки за сделку по всем продавцам
  *Таблица отсортирована по выручке по возрастанию.
  */
 WITH AVG_ALL AS (
-	select
-		AVG(s.quantity *p.price ) as average_all
-	from sales s
-	left join products p on s.product_id = p.product_id 
+    SELECT AVG(S.QUANTITY * P.PRICE) AS AVERAGE_ALL
+    FROM SALES AS S
+    LEFT JOIN PRODUCTS AS P ON S.PRODUCT_ID = P.PRODUCT_ID
 )
 
-select
-	CONCAT(e.first_name , ' ', e.last_name) as seller,
-	FLOOR(AVG(s.quantity *p.price )) as average_income
-from sales s
-left join products p on s.product_id = p.product_id 
-left join employees e on s.sales_person_id = e.employee_id 
-group by seller 
-HAVING AVG(s.quantity *p.price ) < (SELECT average_all FROM AVG_ALL)
-order by average_income ASC
+SELECT
+    CONCAT(E.FIRST_NAME, ' ', E.LAST_NAME) AS SELLER,
+    FLOOR(AVG(S.QUANTITY * P.PRICE)) AS AVERAGE_INCOME
+FROM SALES AS S
+LEFT JOIN PRODUCTS AS P ON S.PRODUCT_ID = P.PRODUCT_ID
+LEFT JOIN EMPLOYEES AS E ON S.SALES_PERSON_ID = E.EMPLOYEE_ID
+GROUP BY SELLER
+HAVING AVG(S.QUANTITY * P.PRICE) < (SELECT AVERAGE_ALL FROM AVG_ALL)
+ORDER BY AVERAGE_INCOME ASC
 
 /*Третий отчет  информацию о выручке по дням недели.
  *Каждая запись содержит имя и фамилию продавца, день недели и суммарную выручку.
  *Отсортируйте данные по порядковому номеру дня недели и seller
  */
-select
-	CONCAT(e.first_name , ' ', e.last_name) as seller,
-	to_char(s.sale_date , 'fmday') as day_of_week,
-	FLOOR(SUM(s.quantity *p.price )) as income
-from sales s
-left join products p on s.product_id = p.product_id 
-left join employees e on s.sales_person_id = e.employee_id 
-group by seller,day_of_week,EXTRACT(ISODOW FROM s.sale_date)
-order by  EXTRACT(ISODOW FROM s.sale_date),seller  asc
+SELECT
+	CONCAT(e.first_name , ' ', e.last_name) AS seller,
+	to_char(s.sale_date , 'fmday') AS day_of_week,
+	FLOOR(SUM(s.quantity *p.price )) AS income
+FROM sales s
+LEFT JOIN products p ON s.product_id = p.product_id 
+LEFT JOIN employees e ON s.sales_person_id = e.employee_id 
+GROUP BY seller,day_of_week,EXTRACT(ISODOW FROM s.sale_date)
+ORDER BY  EXTRACT(ISODOW FROM s.sale_date),seller  ASC
 
 -- 6 ШАГ И ТРИ ОТЧЕТА--
 /*Первый отчет - количество покупателей в разных возрастных группах: 16-25, 26-40 и 40+.
  * Итоговая таблица должна быть отсортирована по возрастным группам
  */
-select
-    case
-        when age between 16 and 25 then '16-25'
-        when age between 26 and 40 then '26-40'
-        else '40+'
-    end as age_category,
-    COUNT(distinct (c.customer_id )) as age_count
-from customers c 
-group by age_category
-order by age_category
+SELECT
+    CASE
+        WHEN c.age BETWEEN 16 AND 25 THEN '16-25'
+        WHEN c.age BETWEEN 26 AND 40 THEN '26-40'
+        ELSE '40+'
+    END AS age_category,
+    COUNT(DISTINCT c.customer_id) AS age_count
+FROM customers AS c
+GROUP BY age_category
+ORDER BY age_category
 
 /*Во втором отчете предоставьте данные по количеству уникальных покупателей и выручке, которую они принесли.
  *  Сгруппируйте данные по дате, которая представлена в числовом виде ГОД-МЕСЯЦ.
  *  Итоговая таблица должна быть отсортирована по дате по возрастанию
  */
-select
-	to_char(s.sale_date,'YYYY-MM') as selling_month,
-	count(distinct(s.customer_id) ) as total_customers,
-	floor(sum(s.quantity*p.price )) as income
-from sales s 
-left join products p on s.product_id = p.product_id
-group by selling_month
+SELECT
+    to_char(s.sale_date, 'YYYY-MM') AS selling_month,
+    count(DISTINCT s.customer_id) AS total_customers,
+    floor(sum(s.quantity * p.price)) AS income
+FROM sales AS s
+LEFT JOIN products AS p ON s.product_id = p.product_id
+GROUP BY selling_month
 
 /*Третий отчет следует составить о покупателях, 
  * первая покупка которых была в ходе проведения акций (акционные товары отпускали со стоимостью равной 0).
  *  Итоговая таблица должна быть отсортирована по id покупателя.
  */
-WITH First_Rows as (
-select
-	concat(c.first_name,' ',c.last_name) as customer,
-	s.sale_date as sale_date,
-	concat(e.first_name,' ',e.last_name) as seller,
-	FIRST_VALUE(p.price * s.quantity)
-        OVER (PARTITION BY c.customer_id  ORDER BY s.sale_date) as frst_value,
-    FIRST_VALUE(s.sale_date)
-        OVER (PARTITION BY c.customer_id  ORDER BY s.sale_date) as frst_date
-from sales s 
-left join employees e on s.sales_person_id = e.employee_id 
-left join customers c on s.customer_id = c.customer_id
-left join products p on s.product_id = p.product_id
-order by c.customer_id
+WITH FIRST_ROWS AS (
+    SELECT
+        S.SALE_DATE,
+        concat(C.FIRST_NAME, ' ', C.LAST_NAME) AS CUSTOMER,
+        concat(E.FIRST_NAME, ' ', E.LAST_NAME) AS SELLER,
+        first_value(P.PRICE * S.QUANTITY)
+            OVER (PARTITION BY C.CUSTOMER_ID ORDER BY S.SALE_DATE)
+            AS FRST_VALUE,
+        first_value(S.SALE_DATE)
+            OVER (PARTITION BY C.CUSTOMER_ID ORDER BY S.SALE_DATE) AS FRST_DATE
+    FROM SALES AS S
+    LEFT JOIN EMPLOYEES AS E ON S.SALES_PERSON_ID = E.EMPLOYEE_ID
+    LEFT JOIN CUSTOMERS AS C ON S.CUSTOMER_ID = C.CUSTOMER_ID
+    LEFT JOIN PRODUCTS AS P ON S.PRODUCT_ID = P.PRODUCT_ID
+    ORDER BY C.CUSTOMER_ID
 )
 
-select
-	customer,
-    sale_date,
-	seller
-from First_Rows
-where frst_value = 0 and sale_date = frst_date
-group by customer,sale_date,seller
+SELECT
+    CUSTOMER,
+    SALE_DATE,
+    SELLER
+FROM FIRST_ROWS
+WHERE FRST_VALUE = 0 AND SALE_DATE = FRST_DATE
+GROUP BY CUSTOMER, SALE_DATE, SELLER
+
