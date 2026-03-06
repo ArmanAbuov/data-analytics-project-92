@@ -26,10 +26,10 @@ SELECT
     average_income
 FROM (
     SELECT
-        CONCAT(e.first_name, ' ', e.last_name) AS seller,
-        FLOOR(AVG(s.quantity * p.price)) AS average_income,
+        concat(e.first_name, ' ', e.last_name) AS seller,
+        floor(avg(s.quantity * p.price)) AS average_income,
         -- Считаем среднее по всем продажам вообще (оконная функция)
-        AVG(AVG(s.quantity * p.price)) OVER () AS global_avg_income
+        avg(avg(s.quantity * p.price)) OVER () AS global_avg_income
     FROM sales AS s
     INNER JOIN products AS p ON s.product_id = p.product_id
     INNER JOIN employees AS e ON s.sales_person_id = e.employee_id
@@ -42,14 +42,14 @@ ORDER BY average_income ASC;
  *Отсортируйте данные по порядковому номеру дня недели и seller
  */
 SELECT
-    CONCAT(E.FIRST_NAME, ' ', E.LAST_NAME) AS SELLER,
-    TO_CHAR(S.SALE_DATE, 'fmday') AS DAY_OF_WEEK,
-    FLOOR(SUM(S.QUANTITY * P.PRICE)) AS INCOME
-FROM SALES AS S
-LEFT JOIN PRODUCTS AS P ON S.PRODUCT_ID = P.PRODUCT_ID
-LEFT JOIN EMPLOYEES AS E ON S.SALES_PERSON_ID = E.EMPLOYEE_ID
-GROUP BY SELLER, DAY_OF_WEEK, EXTRACT(ISODOW FROM S.SALE_DATE)
-ORDER BY EXTRACT(ISODOW FROM S.SALE_DATE), SELLER ASC;
+    concat(e.first_name, ' ', e.last_name) AS seller,
+    to_char(s.sale_date, 'fmday') AS day_of_week,
+    floor(sum(s.quantity * p.price)) AS income
+FROM sales AS s
+LEFT JOIN products AS p ON s.product_id = p.product_id
+LEFT JOIN employees AS e ON s.sales_person_id = e.employee_id
+GROUP BY seller, day_of_week, extract(ISODOW FROM s.sale_date)
+ORDER BY extract(ISODOW FROM s.sale_date), seller ASC;
 -- 6 ШАГ И ТРИ ОТЧЕТА--
 /*Первый отчет - количество покупателей в разных возрастных группах:
  *  16-25, 26-40 и 40+.
@@ -61,7 +61,7 @@ SELECT
         WHEN c.age BETWEEN 26 AND 40 THEN '26-40'
         ELSE '40+'
     END AS age_category,
-    COUNT(DISTINCT c.customer_id) AS age_count
+    count(DISTINCT c.customer_id) AS age_count
 FROM customers AS c
 GROUP BY age_category
 ORDER BY age_category;
