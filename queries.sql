@@ -8,13 +8,8 @@ FROM customers
  * суммарной выручке с проданных товаров и количестве проведенных сделок,
  * и отсортирована по убыванию выручки
  */
--- в consts определяем переменную top - нужно 10 лучших
-/*WITH consts AS (
-SELECT 10 AS top
-)
- */
 SELECT
-    CONCAT(e.first_name, ' ', e.last_name) AS seller,
+    e.first_name || ' ' || e.last_name AS seller,
     COUNT(s.sales_id) AS operations,
     FLOOR(SUM(s.quantity * p.price)) AS income
 FROM sales AS s
@@ -23,7 +18,6 @@ LEFT JOIN employees AS e ON s.sales_person_id = e.employee_id
 GROUP BY seller
 ORDER BY income DESC
 LIMIT 10
---(SELECT top FROM consts)
 
 /*Второй отчет  о продавцах, чья средняя выручка за сделку 
  * меньше средней выручки за сделку по всем продавцам
