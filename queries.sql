@@ -5,7 +5,6 @@ FROM customers;
 /*Первый отчет о десятке лучших продавцов.
  * Таблица состоит из трех колонок - данных о продавце,
  * суммарной выручке с проданных товаров и количестве проведенных сделок,
- * и отсортирована по убыванию выручки
  */
 SELECT
     e.first_name || ' ' || e.last_name AS seller,
@@ -19,7 +18,6 @@ ORDER BY income DESC
 LIMIT 10;
 /*Второй отчет  о продавцах, чья средняя выручка за сделку
  * меньше средней выручки за сделку по всем продавцам
- *Таблица отсортирована по выручке по возрастанию.
  */
 SELECT
     seller,
@@ -39,7 +37,6 @@ WHERE average_income < global_avg_income
 ORDER BY average_income ASC;
 /*Третий отчет  информацию о выручке по дням недели.
  *Каждая запись содержит имя и фамилию продавца,день недели и суммарную выручку
- *Отсортируйте данные по порядковому номеру дня недели и seller
  */
 SELECT
     concat(e.first_name, ' ', e.last_name) AS seller,
@@ -52,8 +49,7 @@ GROUP BY seller, day_of_week, extract(ISODOW FROM s.sale_date)
 ORDER BY extract(ISODOW FROM s.sale_date), seller ASC;
 -- 6 ШАГ И ТРИ ОТЧЕТА--
 /*Первый отчет - количество покупателей в разных возрастных группах:
- *  16-25, 26-40 и 40+.
- * Итоговая таблица должна быть отсортирована по возрастным группам
+ *  16-25, 26-40 и 40+.отсортировать по возрастным группам
  */
 SELECT
     CASE
@@ -68,7 +64,6 @@ ORDER BY age_category;
 /*Во втором отчете предоставьте данные по количеству
  * уникальных покупателей и выручке,которую они принесли.
  *  Сгруппируйте данные по дате, которая представлена в числовом виде ГОД-МЕСЯЦ.
- *  Итоговая таблица должна быть отсортирована по дате по возрастанию
  */
 SELECT
     to_char(s.sale_date, 'YYYY-MM') AS selling_month,
@@ -83,16 +78,14 @@ GROUP BY selling_month;
  * (акционные товары отпускали со стоимостью равной 0).
  *  Итоговая таблица должна быть отсортирована по id покупателя.
  */
-WITH first_rows AS (
+WITH ranked_sales AS (
     SELECT
         s.sale_date,
+        p.price,
         concat(c.first_name, ' ', c.last_name) AS customer,
         concat(e.first_name, ' ', e.last_name) AS seller,
-        first_value(p.price * s.quantity)
-            OVER (PARTITION BY c.customer_id ORDER BY s.sale_date)
-            AS frst_value,
-        first_value(s.sale_date)
-            OVER (PARTITION BY c.customer_id ORDER BY s.sale_date) AS frst_date
+        row_number()
+            OVER (PARTITION BY s.customer_id ORDER BY s.sale_date) AS rn
     FROM sales AS s
     LEFT JOIN employees AS e ON s.sales_person_id = e.employee_id
     LEFT JOIN customers AS c ON s.customer_id = c.customer_id
@@ -104,6 +97,5 @@ SELECT
     customer,
     sale_date,
     seller
-FROM first_rows
-WHERE frst_value = 0 AND sale_date = frst_date
-GROUP BY customer, sale_date, seller;
+FROM ranked_sales
+WHERE rn = 1 AND price = 0;
